@@ -24,8 +24,11 @@ libpsx.a: $(OBJS) | $(OBJDIR)
 
 $(OUTDIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(OUTDIR)/libc:
+	mkdir -p $(OUTDIR)/libc
 	
-$(OUTDIR)/libc/%.o: src/libc/%.c
+$(OUTDIR)/libc/%.o: src/libc/%.c | $(OUTDIR)/libc
 	$(CC) $(CFLAGS) -c -o $@ $<
 	
 $(OUTDIR)/runexe/%.o: src/runexe/%.c
