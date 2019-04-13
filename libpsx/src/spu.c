@@ -1,4 +1,4 @@
-/*
+/**
  * PSXSDK
  *
  * Sound Processing Unit Functions
@@ -6,39 +6,10 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <psx.h>
 
-#define SPU_ADDR				*((unsigned short*)0x1f801da6)
-#define SPU_DATA				*((unsigned short*)0x1f801da8)
-#define SPU_CONTROL 			*((unsigned short*)0x1f801daa)
-#define SPU_STATUS			*((unsigned short*)0x1f801dac)
-#define SPU_STATUS2			*((unsigned short*)0x1f801dae)
-#define SPU_MVOL_L			*((unsigned short*)0x1f801d80)
-#define SPU_MVOL_R			*((unsigned short*)0x1f801d82)
-#define SPU_REVERB_L			*((unsigned short*)0x1f801d84)
-#define SPU_REVERB_R			*((unsigned short*)0x1f801d86)
-#define SPU_KEY_ON1           		*((unsigned short*)0x1f801d88)
-#define SPU_KEY_ON2	            	*((unsigned short*)0x1f801d8a)
-#define SPU_KEY_OFF1           		*((unsigned short*)0x1f801d8c)
-#define SPU_KEY_OFF2            	*((unsigned short*)0x1f801d8e)
-#define SPU_KEY_FM_MODE1		*((unsigned short*)0x1f801d90)
-#define SPU_KEY_FM_MODE2		*((unsigned short*)0x1f801d92)
-#define SPU_KEY_NOISE_MODE1		*((unsigned short*)0x1f801d94)
-#define SPU_KEY_NOISE_MODE2		*((unsigned short*)0x1f801d96)
-#define SPU_KEY_REVERB_MODE1		*((unsigned short*)0x1f801d98)
-#define SPU_KEY_REVERB_MODE2		*((unsigned short*)0x1f801d9a)
-#define SPU_CD_MVOL_L			*((unsigned short*)0x1f801db0)
-#define SPU_CD_MVOL_R			*((unsigned short*)0x1f801db2)
-#define SPU_EXT_VOL_L			*((unsigned short*)0x1f801db4)
-#define SPU_EXT_VOL_R			*((unsigned short*)0x1f801db6)
-#define SPU_REVERB_WORK_ADDR		*((unsigned short*)0x1f801da2)
-#define SPU_VOICE_BASE_ADDR(x)		(0x1f801c00 + (x<<4))
-
-// DPCR and other DMA defines will be eventually shared between GPU and SPU
-
-#define DPCR				*((unsigned int*)0x1f8010f0)
-
-unsigned int ss_vag_addr;
+static unsigned int ss_vag_addr;
 
 void SsVoiceVol(int voice, unsigned short left, unsigned short right)
 {
@@ -94,7 +65,7 @@ void SsKeyOn(int voice)
 	while(SPU_KEY_ON2 != (i >> 16));
 */
 }
-	
+
 void SsKeyOff(int voice)
 {
 	unsigned int i = 1 << voice;
@@ -102,6 +73,8 @@ void SsKeyOff(int voice)
 	SPU_KEY_OFF1 = i & 0xffff;
 	SPU_KEY_OFF2 = i >> 16;
 }
+
+
 
 void SsKeyOnMask(int mask)
 {
@@ -114,7 +87,7 @@ void SsKeyOffMask(int mask)
 	SPU_KEY_OFF1 = mask & 0xffff;
 	SPU_KEY_OFF2 = mask >> 16;
 }
-	
+
 void SsWait()
 {
 	while(SPU_STATUS2 & 0x7ff);
@@ -180,46 +153,40 @@ void SsInit()
 	printf("SPU/SS Initialized.\n");
 }
 
-// SsUpload is originally based on code by bitmaster
+// This implementation of SsUpload() was contributed by Shendo 
+// It waits either for a period of time or for the status flags to be raised, whichever comes first.
+// This makes it work also on ePSXe, which never raises the status flags.
+
 void SsUpload(void *addr, int size, int spu_addr)
 {
-	short spu_status; 
-	int block_size;
-	short *ptr;
-	short d;
+	unsigned short *ptr = addr;
 	int i;
+	
+	while(size > 0)
+	{		
+		SPU_STATUS = 4; // Sound RAM Data Transfer Control
+		SPU_CONTROL = SPU_CONTROL & ~0x30; // SPUCNT.transfer_mode = 0 (STOP)
+	
+	
+		for(i = 0; i < 100; i++)
+		if(((SPU_STATUS2 >> 4) & 3) == 0)break; // wait until SPUSTAT.transfer is 0 (STOP)
+	
+		SPU_ADDR = spu_addr >> 3;
 
-	spu_status = SPU_STATUS2 & 0x7ff;
-
-	SPU_ADDR = spu_addr >> 3;
-
-	for(i=0;i<100;i++); // Waste time...
-
-	ptr = (short *) addr;
-
-	while(size > 0) 
-	{
-		block_size = ( size > 64 ) ? 64 : size; 
-
-		for( i = 0; i < block_size; i += 2 )
-			SPU_DATA = *ptr++;     
-
-		d = SPU_CONTROL;
-		d = ( d & 0xffcf ) | 0x10;
-		SPU_CONTROL = d;	// write Block to SPU-Memory
-
-		for(i=0;i<100;i++) // Waste time
-
-		while(SPU_STATUS2 & 0x400);
-
-		for(i=0;i<200;i++); // Waste time
-
-		size -= block_size;
-	}     
-
-	SPU_CONTROL &= 0xffcf;
-
-	while( ( SPU_STATUS2 & 0x7ff ) != spu_status ); 
+		for(i = 0; i < 32; i++)
+			SPU_DATA = ptr[i];
+		
+		SPU_CONTROL = (SPU_CONTROL & ~0x30) | 16; // SPUCNT.transfer_mode = 1 (MANUAL)
+	
+		for(i = 0; i < 100; i++)
+		if(((SPU_STATUS2 >> 4) & 3) == 1)break; // wait until SPUSTAT.transfer is 1 (MANUAL)
+		
+		while(SPU_STATUS2 & 0x400); // wait for transfer busy bit to be cleared
+		
+		spu_addr += 64;
+		ptr += 32;
+		size-=64;
+	}
 }
 
 unsigned short SsFreqToPitch(int hz)
@@ -257,6 +224,7 @@ void SsUploadVagEx(SsVag *vag, int spu_addr)
 
 void SsUploadVag(SsVag *vag)
 {
+	vag->spu_addr = ss_vag_addr;
 	SsUploadVagEx(vag, ss_vag_addr);
 	ss_vag_addr += vag->data_size;
 }
@@ -281,4 +249,21 @@ void SsStopVag(SsVag *vag)
 void SsResetVagAddr()
 {
 	ss_vag_addr = SPU_DATA_BASE_ADDR;
+}
+
+void SsEnableCd()
+{
+	SPU_CONTROL |= 1;
+	CdSendCommand(CdlDemute, 0);
+}
+
+void SsEnableExt()
+{
+	SPU_CONTROL |= 2;
+}
+
+void SsCdVol(unsigned short left, unsigned short right)
+{
+	SPU_CD_MVOL_L = left;
+	SPU_CD_MVOL_R = right;
 }
