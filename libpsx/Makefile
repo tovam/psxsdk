@@ -31,7 +31,10 @@ $(OUTDIR)/libc:
 $(OUTDIR)/libc/%.o: src/libc/%.c | $(OUTDIR)/libc
 	$(CC) $(CFLAGS) -c -o $@ $<
 	
-$(OUTDIR)/runexe/%.o: src/runexe/%.c
+$(OUTDIR)/runexe:
+	mkdir -p $(OUTDIR)/runexe
+
+$(OUTDIR)/runexe/%.o: src/runexe/%.c | $(OUTDIR)/runexe
 	$(CC) $(CFLAGS) -c -o $@ $<
 	     
 $(OUTDIR)/%.o: src/%.s
