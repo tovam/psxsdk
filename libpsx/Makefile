@@ -7,30 +7,34 @@ CFLAGS += -O0
 # Never remove the line below!
 CFLAGS += -D__IN_LIBPSX
 
-OBJS =	$(patsubst src/%.c, out/%.o, $(wildcard src/*.c)) \
-		$(patsubst src/libc/%.c, out/libc/%.o, $(wildcard src/libc/*.c)) \
-		$(patsubst src/runexe/%.c, out/runexe/%.o, $(wildcard src/runexe/*.c)) \
-		$(patsubst src/%.s, out/%.o, $(wildcard src/*.s)) \
-		$(patsubst src/runexe/%.s, out/runexe/%.o, $(wildcard src/runexe/*.s))
- 
+OBJDIR = obj
+OBJS =	$(patsubst src/%.c, $(OUTDIR)/%.o, $(wildcard src/*.c)) \
+		$(patsubst src/libc/%.c, $(OUTDIR)/libc/%.o, $(wildcard src/libc/*.c)) \
+		$(patsubst src/runexe/%.c, $(OUTDIR)/runexe/%.o, $(wildcard src/runexe/*.c)) \
+		$(patsubst src/%.s, $(OUTDIR)/%.o, $(wildcard src/*.s)) \
+		$(patsubst src/runexe/%.s, $(OUTDIR)/runexe/%.o, $(wildcard src/runexe/*.s))
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
 all: libpsx.a start.o
 
-libpsx.a: $(OBJS)
+libpsx.a: $(OBJS) | $(OBJDIR)
 	$(AR) r libpsx.a $(OBJS)
 
-out/%.o: src/%.c
+$(OUTDIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 	
-out/libc/%.o: src/libc/%.c
+$(OUTDIR)/libc/%.o: src/libc/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 	
-out/runexe/%.o: src/runexe/%.c
+$(OUTDIR)/runexe/%.o: src/runexe/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 	     
-out/%.o: src/%.s
+$(OUTDIR)/%.o: src/%.s
 	$(CC) $(CFLAGS) -c -o $@ $<
 	
-out/runexe/%.o: src/runexe/%.s
+$(OUTDIR)/runexe/%.o: src/runexe/%.s
 	$(CC) $(CFLAGS) -c -o $@ $<
 	
 start.o: src/start/start.s
