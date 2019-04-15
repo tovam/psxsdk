@@ -15,7 +15,7 @@ These terms were written to not make people close this work which was released
 for all to share. In fact, no use is otherwise restricted.
 
 This license also applies to the following tools: 
-bin2c, bmp2tim, getpsxiso, systemcnf
+bmp2tim, getpsxiso, systemcnf
 
 Some of the tools have a different license: 
 
