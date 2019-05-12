@@ -41,10 +41,10 @@ int main(int argc, char *argv[])
 	for(x=0;x<strlen(argv[1]);x++)
 		argv[1][x] = toupper((int)argv[1][x]);
 		
-	printf("BOOT = cdrom:%s;1\n", argv[1]);
-	printf("TCB = %d\n", tcb);
-	printf("EVENT = %d\n", event);
-	printf("STACK = %X", stack);
+	printf("BOOT = cdrom:\\%s;1\r\n", argv[1]);
+	printf("TCB = %d\r\n", tcb);
+	printf("EVENT = %d\r\n", event);
+	printf("STACK = %X\r\n", stack);
 	
 	return 0;
 }
